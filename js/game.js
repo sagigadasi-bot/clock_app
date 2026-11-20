@@ -71,7 +71,7 @@ export function gameScreen(app, levelIndex, nav) {
     results.push(star);
     markDot(star);
     clock.setInteractive(false);
-    mitzi.say(`תשובה נכונה! ${pickOne(PRAISE)} השעה ${bridge(t)}`, { mood: 'happy' });
+    mitzi.say(`נכון! השעה באמת ${bridge(t)} ${pickOne(PRAISE)}`, { mood: 'happy' });
     showNext();
   }
 
