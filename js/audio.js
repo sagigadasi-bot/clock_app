@@ -4,7 +4,7 @@ import { store } from './progress.js';
 let voices = [];
 function loadVoices() {
   if (!('speechSynthesis' in window)) return;
-  voices = speechSynthesis.getVoices().filter((v) => v.lang && v.lang.toLowerCase().startsWith('he'));
+  voices = speechSynthesis.getVoices().filter((v) => v.lang && /^(he|iw)([-_]|$)/i.test(v.lang));
 }
 if ('speechSynthesis' in window) {
   loadVoices();
