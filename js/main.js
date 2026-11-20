@@ -52,10 +52,10 @@ const SCREENS = {
       </section>`;
     const m = new Mitzi($('.mitzi-slot', app), { big: true });
     const hello = greet && cont
-      ? `שלום רוני! איזה כיף שחזרת! ${r ? 'נמשיך מאיפה שעצרנו?' : `נמשיך לשחק בשלב ${LEVELS[cont.levelIndex].id}?`} תלחצי על הכפתור הירוק.`
+      ? `שלום רוני! איזה כיף שחזרת! ${r ? 'נמשיך מאיפה שעצרנו?' : `נמשיך בשלב ${LEVELS[cont.levelIndex].id}?`} תלחצי על הכפתור הירוק.`
       : greet
       ? 'שלום רוני! אני מיצי. בואי נלמד ביחד לקרוא את השעון!'
-      : pickOne(['מה נשחק עכשיו, רוני?', 'בואי נשחק!', 'איזה כיף שחזרת!']);
+      : pickOne(['מה עושים עכשיו, רוני?', 'בואי נתחיל!', 'איזה כיף שחזרת!']);
     m.say(hello, { mood: 'happy' });
     app.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => nav(b.dataset.go)));
     $('.parents-btn', app).addEventListener('click', () => nav('parentsGate'));
@@ -73,7 +73,7 @@ const SCREENS = {
         <div class="level-grid"></div>
       </section>`;
     const m = new Mitzi($('.mitzi-slot', app));
-    m.say('באיזה שלב נשחק?');
+    m.say('באיזה שלב נתחיל?');
     $('[data-act=home]', app).addEventListener('click', () => nav('home'));
     const grid = $('.level-grid', app);
     LEVELS.forEach((level, i) => {
@@ -149,7 +149,7 @@ const SCREENS = {
       b.className = 'sticker' + (have ? '' : ' empty');
       b.textContent = have ? emoji : '?';
       b.addEventListener('click', () => {
-        if (!have) return speak('את המדבקה הזאת עוד לא מצאת. תמשיכי לשחק!');
+        if (!have) return speak('את המדבקה הזאת עוד לא מצאת. בכל סבב שתסיימי תקבלי מדבקה חדשה!');
         b.classList.remove('wiggle'); void b.offsetWidth; b.classList.add('wiggle');
         speak(name);
       });

@@ -1,6 +1,6 @@
 // Service worker – המשחק עובד גם בלי אינטרנט.
 // לשנות את הגרסה בכל עדכון כדי שהטלפון יוריד את הקבצים החדשים.
-const VERSION = 'v5';
+const VERSION = 'v6';
 const CACHE = `hagia-hazman-${VERSION}`;
 const FILES = [
   './', 'index.html', 'manifest.json', 'css/style.css',
