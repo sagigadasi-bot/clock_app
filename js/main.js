@@ -131,6 +131,9 @@ const SCREENS = {
         <div class="sticker-grid"></div>
       </section>`;
     $('[data-act=home]', app).addEventListener('click', () => nav('home'));
+    speak(store.data.stickers.length
+      ? 'אלה המדבקות שלך! תלחצי על מדבקה כדי לשמוע את השם שלה.'
+      : 'עוד אין לך מדבקות. בכל סבב שתסיימי תקבלי מדבקה חדשה!');
     const grid = $('.sticker-grid', app);
     STICKERS.forEach(([emoji, name], i) => {
       const have = store.data.stickers.includes(i);

@@ -63,22 +63,22 @@ export function gameScreen(app, levelIndex, nav) {
     d.textContent = ok ? '⭐' : '🐾';
   }
 
-  function success(t) {
+  // נכון: תמיד אומרים "תשובה נכונה". כוכב – אם הצליחה עד הניסיון השני.
+  function success(t, wrongTries) {
     sfx.correct();
-    store.addStar(level.id);
-    results.push(true);
-    markDot(true);
+    const star = wrongTries <= 1;
+    if (star) store.addStar(level.id);
+    results.push(star);
+    markDot(star);
     clock.setInteractive(false);
-    mitzi.say(`${pickOne(PRAISE)} השעה ${bridge(t)}`, { mood: 'happy' });
+    mitzi.say(`תשובה נכונה! ${pickOne(PRAISE)} השעה ${bridge(t)}`, { mood: 'happy' });
     showNext();
   }
 
-  function giveUp(t) {
-    results.push(false);
-    markDot(false);
-    clock.setInteractive(false);
-    mitzi.say(`ככה נראית השעה ${bridge(t)} בפעם הבאה תצליחי!`);
-    showNext();
+  // לא נכון: אומרים "זו תשובה לא נכונה, תנסי שוב" ומוסיפים רמז
+  function wrong(hint) {
+    sfx.oops();
+    mitzi.say(`זו תשובה לא נכונה. תנסי שוב! ${hint}`);
   }
 
   nextBtn.addEventListener('click', () => {
@@ -99,7 +99,7 @@ export function gameScreen(app, levelIndex, nav) {
     targetEl.innerHTML = '';
     clock.setInteractive(false);
     clock.animateTo(toT(t), 700);
-    mitzi.say('מה השעה בשעון?');
+    mitzi.say('מה השעה בשעון? תבחרי את התשובה הנכונה.');
     let tries = 0;
     const options = shuffle([t, ...distractors(level, t)]);
     answersEl.innerHTML = '';
@@ -115,20 +115,13 @@ export function gameScreen(app, levelIndex, nav) {
         if (toT(o) === toT(t)) {
           b.classList.add('right');
           grid.classList.add('locked');
-          success(t);
+          success(t, tries);
           return;
         }
         tries++;
-        sfx.oops();
         b.classList.add('wrong');
         b.disabled = true;
-        if (tries >= 2) {
-          grid.classList.add('locked');
-          [...grid.children][options.indexOf(t)].classList.add('right');
-          giveUp(t);
-        } else {
-          readHint(o, t);
-        }
+        wrong(readHint(o, t));
       });
       grid.appendChild(b);
     }
@@ -139,18 +132,17 @@ export function gameScreen(app, levelIndex, nav) {
     if (chosen.m === t.m && chosen.h !== t.h) {
       clock.flash('hour');
       if (t.m >= 30 && chosen.h === nextHour(t.h)) {
-        mitzi.say(`כמעט! תסתכלי טוב על המחוג הקצר – הוא עוד לא הגיע ל${HOURS[nextHour(t.h)]}.`);
-      } else {
-        mitzi.say('כמעט! תסתכלי על המחוג הקצר והאדום – הוא מראה את השעה.');
+        return `תסתכלי טוב על המחוג הקצר – הוא עוד לא הגיע ל${HOURS[nextHour(t.h)]}.`;
       }
-    } else if (chosen.h === t.h) {
-      clock.flash('minute');
-      mitzi.say('כמעט! תסתכלי על המחוג הארוך והכחול – הוא מראה את הדקות.');
-    } else {
-      clock.flash('hour');
-      setTimeout(() => clock.flash('minute'), 900);
-      mitzi.say('נסי שוב! המחוג הקצר מראה את השעה, והמחוג הארוך מראה את הדקות.');
+      return 'תסתכלי על המחוג הקצר והאדום – הוא מראה את השעה.';
     }
+    if (chosen.h === t.h) {
+      clock.flash('minute');
+      return 'תסתכלי על המחוג הארוך והכחול – הוא מראה את הדקות.';
+    }
+    clock.flash('hour');
+    setTimeout(() => clock.flash('minute'), 900);
+    return 'המחוג הקצר מראה את השעה, והמחוג הארוך מראה את הדקות.';
   }
 
   // ---------- "תכווני את השעון" ----------
@@ -170,42 +162,53 @@ export function gameScreen(app, levelIndex, nav) {
     if (toT(start) === toT(t)) start = { h: 6, m: 0 };
     clock.setTime(toT(start));
     clock.setInteractive(true);
-    mitzi.say(`תזיזי את המחוגים לשעה ${p}`);
+    const how = level.lockMinute ? 'תזיזי את המחוג הקצר' : 'תזיזי את המחוגים';
+    mitzi.say(`${how} לשעה ${p}, ואז תלחצי על בדיקה.`);
 
     let tries = 0;
-    answersEl.innerHTML = `<button class="btn success check">✔ בדיקה</button>`;
+    answersEl.innerHTML = `<div class="set-actions">
+        <button class="btn success check">✔ בדיקה</button>
+        <button class="btn purple show-me hidden">💡 תראי לי</button>
+      </div>`;
     const check = $('.check', answersEl);
+    const showMe = $('.show-me', answersEl);
     check.addEventListener('click', () => {
       if (check.disabled) return;
       const cur = fromT(clock.t);
       if (toT(cur) === toT(t)) {
         check.disabled = true;
-        success(t);
+        showMe.classList.add('hidden');
+        success(t, tries);
         return;
       }
       tries++;
-      sfx.oops();
-      if (tries >= 3) {
-        check.disabled = true;
-        clock.setInteractive(false);
-        clock.animateTo(toT(t), 1200).then(() => giveUp(t));
-        return;
-      }
-      setHint(cur, t);
+      wrong(setHint(cur, t));
+      if (tries >= 3) showMe.classList.remove('hidden');
+    });
+    // אחרי 3 טעויות אפשר לבקש ממיצי להראות (בלי כוכב)
+    showMe.addEventListener('click', () => {
+      check.disabled = true;
+      showMe.classList.add('hidden');
+      clock.setInteractive(false);
+      clock.animateTo(toT(t), 1200).then(() => {
+        results.push(false);
+        markDot(false);
+        mitzi.say(`ככה נראית השעה ${bridge(t)} בפעם הבאה תצליחי!`);
+        showNext();
+      });
     });
   }
 
   function setHint(cur, t) {
     if (cur.m !== t.m) {
       clock.flash('minute');
-      if (t.m === 0) mitzi.say('המחוג הארוך צריך להצביע למעלה, על השתים עשרה.');
-      else if (t.m % 5 === 0) mitzi.say(`המחוג הארוך צריך להצביע על המספר ${HOURS[t.m / 5]}.`);
-      else mitzi.say(`המחוג הארוך מראה דקות. כל קו קטן זה דקה אחת. צריך ${minuteWords(t.m)} דקות.`);
-    } else {
-      clock.flash('hour');
-      if (t.m === 0) mitzi.say(`המחוג הקצר צריך להצביע על המספר ${HOURS[t.h]}.`);
-      else mitzi.say(`המחוג הקצר צריך להיות בין ${HOURS[t.h]} ל${HOURS[nextHour(t.h)]}.`);
+      if (t.m === 0) return 'המחוג הארוך צריך להצביע למעלה, על השתים עשרה.';
+      if (t.m % 5 === 0) return `המחוג הארוך צריך להצביע על המספר ${HOURS[t.m / 5]}.`;
+      return `המחוג הארוך מראה דקות. כל קו קטן זה דקה אחת. צריך ${minuteWords(t.m)} דקות.`;
     }
+    clock.flash('hour');
+    if (t.m === 0) return `המחוג הקצר צריך להצביע על המספר ${HOURS[t.h]}.`;
+    return `המחוג הקצר צריך להיות בין ${HOURS[t.h]} ל${HOURS[nextHour(t.h)]}.`;
   }
 
   function ask() {

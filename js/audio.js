@@ -27,12 +27,23 @@ function bestVoice() {
 }
 
 let speakToken = 0;
+let current = null; // שומרים הפניה – אחרת Safari לפעמים "שוכח" את המשפט באמצע
 export function speak(text) {
   const token = ++speakToken;
   return new Promise((resolve) => {
     if (!store.data.voice || !('speechSynthesis' in window) || !text) return resolve();
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    const busy = speechSynthesis.speaking || speechSynthesis.pending;
+    if (busy) speechSynthesis.cancel();
+    // ב-iOS משפט שנשלח מיד אחרי cancel() נבלע לפעמים – מחכים רגע קצר
+    setTimeout(() => {
+      if (token !== speakToken) return resolve(false);
+      speakNow(text, token, resolve);
+    }, busy ? 120 : 0);
+  });
+}
+
+function speakNow(text, token, resolve) {
+    const u = (current = new SpeechSynthesisUtterance(text));
     u.lang = 'he-IL';
     const v = bestVoice();
     if (v) u.voice = v;
@@ -43,8 +54,8 @@ export function speak(text) {
     u.onend = finish;
     u.onerror = finish;
     setTimeout(finish, 1500 + text.length * 140);
+    speechSynthesis.resume();
     speechSynthesis.speak(u);
-  });
 }
 export function stopSpeaking() { speakToken++; if ('speechSynthesis' in window) speechSynthesis.cancel(); }
 
