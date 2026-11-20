@@ -1,0 +1,38 @@
+// Service worker – המשחק עובד גם בלי אינטרנט.
+// לשנות את הגרסה בכל עדכון כדי שהטלפון יוריד את הקבצים החדשים.
+const VERSION = 'v1';
+const CACHE = `hagia-hazman-${VERSION}`;
+const FILES = [
+  './', 'index.html', 'manifest.json', 'css/style.css',
+  'js/main.js', 'js/game.js', 'js/clock.js', 'js/levels.js', 'js/timeText.js',
+  'js/progress.js', 'js/audio.js', 'js/ui.js',
+  'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',
+];
+
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
+  );
+});
+
+// קודם רשת (כדי לקבל עדכונים), ואם אין אינטרנט – מהמטמון
+self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(
+    fetch(e.request)
+      .then((res) => {
+        if (res.ok && (new URL(e.request.url).origin === location.origin || e.request.url.includes('fonts.g'))) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(e.request, { ignoreSearch: true }).then((r) => r || caches.match('index.html'))),
+  );
+});

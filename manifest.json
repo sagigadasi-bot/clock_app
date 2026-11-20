@@ -1,0 +1,18 @@
+{
+  "name": "הגיע הזמן",
+  "short_name": "הגיע הזמן",
+  "description": "משחק ללימוד קריאת שעון מחוגים עם מיצי החתול",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff1dc",
+  "theme_color": "#fff1dc",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
