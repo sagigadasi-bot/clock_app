@@ -2,7 +2,7 @@
 //   read – "מה השעה?" (בחירה מתוך 3 תשובות)
 //   set  – "תכווני את השעון" (גרירת מחוגים)
 import { Clock } from './clock.js';
-import { LEVELS, ROUND_LENGTH, distractors, randomTime, roundTypes, shuffle } from './levels.js';
+import { LEVELS, ROUND_LENGTH, STARS_TO_UNLOCK, distractors, randomTime, roundTypes, shuffle } from './levels.js';
 import { timeToHebrew, digital, toT, fromT, nextHour, HOURS, minuteWords } from './timeText.js';
 import { store } from './progress.js';
 import { sfx, stopSpeaking } from './audio.js';
@@ -39,10 +39,32 @@ export function gameScreen(app, levelIndex, nav) {
   $('[data-act=home]', app).addEventListener('click', () => { stopSpeaking(); nav('levels'); });
 
   const types = roundTypes(level);
-  const results = [];
+  let results = [];
   let qi = 0;
   let last = null;
-  const starsBefore = store.stars(level.id);
+  let starsBefore = store.stars(level.id);
+  let current = null;
+
+  // ---- שמירת המקום בסבב, כדי להמשיך בדיוק מאותה שאלה ----
+  store.data.lastLevel = levelIndex;
+  const saved = store.data.round;
+  const resuming = saved && saved.levelIndex === levelIndex;
+  if (resuming) {
+    ({ qi, results, starsBefore } = saved);
+    current = saved.current;
+    results.forEach((ok, i) => { dots[i].className = ok ? 'star' : 'done'; dots[i].textContent = ok ? '⭐' : '🐾'; });
+  }
+  function saveRound() {
+    store.data.round = { levelIndex, qi, results, starsBefore, current };
+    store.save();
+  }
+  // אחרי שענתה – השאלה הבאה היא נקודת ההמשך
+  function answered() {
+    qi++;
+    current = null;
+    saveRound();
+    qi--;
+  }
 
   const phrase = (t) => timeToHebrew(t.h, t.m, level.style);
   // בשלבים עם ניסוח מילולי – מגשרים לניסוח המספרי שהיא כבר מכירה
@@ -70,6 +92,7 @@ export function gameScreen(app, levelIndex, nav) {
     if (star) store.addStar(level.id);
     results.push(star);
     markDot(star);
+    answered();
     clock.setInteractive(false);
     mitzi.say(`נכון! השעה באמת ${bridge(t)} ${pickOne(PRAISE)}`, { mood: 'happy' });
     showNext();
@@ -84,15 +107,18 @@ export function gameScreen(app, levelIndex, nav) {
   nextBtn.addEventListener('click', () => {
     nextBtn.classList.add('hidden');
     qi++;
-    if (qi >= ROUND_LENGTH) {
-      const earned = results.filter(Boolean).length;
-      const unlockedNew = levelIndex + 1 < LEVELS.length && !store.data.unlockAll &&
-        starsBefore < 8 && store.stars(level.id) >= 8;
-      nav('reward', { levelIndex, earned, unlockedNew });
-    } else {
-      ask();
-    }
+    if (qi >= ROUND_LENGTH) finish();
+    else ask();
   });
+
+  function finish() {
+    store.data.round = null;
+    store.save();
+    const earned = results.filter(Boolean).length;
+    const unlockedNew = levelIndex + 1 < LEVELS.length && !store.data.unlockAll &&
+      starsBefore < STARS_TO_UNLOCK && store.stars(level.id) >= STARS_TO_UNLOCK;
+    nav('reward', { levelIndex, earned, unlockedNew });
+  }
 
   // ---------- "מה השעה?" ----------
   function askRead(t) {
@@ -193,6 +219,7 @@ export function gameScreen(app, levelIndex, nav) {
       clock.animateTo(toT(t), 1200).then(() => {
         results.push(false);
         markDot(false);
+        answered();
         mitzi.say(`ככה נראית השעה ${bridge(t)} בפעם הבאה תצליחי!`);
         showNext();
       });
@@ -212,14 +239,20 @@ export function gameScreen(app, levelIndex, nav) {
   }
 
   function ask() {
-    const t = randomTime(level, last);
+    const t = current || randomTime(level, last);
     last = t;
+    current = t;
+    saveRound();
     dots.forEach((d, i) => d.classList.toggle('current', i === qi));
     if (types[qi] === 'set') askSet(t); else askRead(t);
   }
 
+  if (resuming && qi >= ROUND_LENGTH) {
+    finish(); // ענתה על השאלה האחרונה אבל יצאה לפני הפרס
+  } else if (resuming) {
+    mitzi.say('ממשיכים מאיפה שעצרנו!', { mood: 'happy' }).then(() => ask());
   // הסבר קצר בפעם הראשונה בכל שלב
-  if (!store.data.seenIntro[level.id]) {
+  } else if (!store.data.seenIntro[level.id]) {
     clock.setTime(toT(level.example));
     targetEl.innerHTML = `<div class="target-card"><span class="phrase-big">${timeToHebrew(level.example.h, level.example.m, level.style)}</span></div>`;
     mitzi.say(level.intro);

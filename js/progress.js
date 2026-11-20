@@ -12,6 +12,8 @@ const DEFAULTS = {
   voiceName: null,
   rounds: 0,
   seenIntro: {},      // levelId -> true
+  lastLevel: null,    // השלב האחרון ששיחקה בו
+  round: null,        // סבב שלא הסתיים: { levelIndex, qi, results, starsBefore, current }
 };
 
 function load() {
@@ -35,8 +37,8 @@ export const store = {
   },
   // ---- העברה לטלפון אחר: ההתקדמות נארזת בתוך קישור ----
   exportCode() {
-    const { stars, stickers, unlockAll, rounds, seenIntro } = this.data;
-    const json = JSON.stringify({ v: 1, stars, stickers, unlockAll, rounds, seenIntro });
+    const { stars, stickers, unlockAll, rounds, seenIntro, lastLevel, round } = this.data;
+    const json = JSON.stringify({ v: 1, stars, stickers, unlockAll, rounds, seenIntro, lastLevel, round });
     return btoa(String.fromCharCode(...new TextEncoder().encode(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   },
   transferLink() {
@@ -56,6 +58,7 @@ export const store = {
     Object.assign(this.data, {
       stars: d.stars, stickers: d.stickers, unlockAll: !!d.unlockAll,
       rounds: d.rounds || 0, seenIntro: d.seenIntro || {},
+      lastLevel: d.lastLevel ?? null, round: d.round || null,
     });
     this.save();
   },

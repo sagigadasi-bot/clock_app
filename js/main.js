@@ -33,6 +33,10 @@ const SCREENS = {
   },
 
   home({ greet = false } = {}) {
+    // מאיפה להמשיך: סבב שלא הסתיים, או השלב האחרון ששיחקה בו
+    const r = store.data.round;
+    const cont = r ? { levelIndex: r.levelIndex, qi: r.qi }
+      : store.data.lastLevel != null ? { levelIndex: store.data.lastLevel, qi: null } : null;
     app.innerHTML = `
       <section class="screen home">
         <button class="icon-btn parents-btn" aria-label="אזור הורים">⚙️</button>
@@ -40,18 +44,22 @@ const SCREENS = {
         <div class="mitzi-slot"></div>
         <div class="home-stats"><span>⭐ ${store.totalStars()}</span><span>🎁 ${store.data.stickers.length}</span></div>
         <div class="menu">
-          <button class="btn primary big" data-go="levels">🎮 משחקים</button>
+          ${cont ? `<button class="btn success big continue">▶ להמשיך – שלב ${LEVELS[cont.levelIndex].id}${cont.qi != null ? `<small>שאלה ${Math.min(cont.qi + 1, 6)} מתוך 6</small>` : ''}</button>` : ''}
+          <button class="btn primary big" data-go="levels">🎮 ${cont ? 'כל השלבים' : 'משחקים'}</button>
           <button class="btn purple big" data-go="free">🕹️ משחק חופשי</button>
           <button class="btn pink big" data-go="album">📒 המדבקות שלי</button>
         </div>
       </section>`;
     const m = new Mitzi($('.mitzi-slot', app), { big: true });
-    const hello = greet
+    const hello = greet && cont
+      ? `שלום רוני! איזה כיף שחזרת! ${r ? 'נמשיך מאיפה שעצרנו?' : `נמשיך לשחק בשלב ${LEVELS[cont.levelIndex].id}?`} תלחצי על הכפתור הירוק.`
+      : greet
       ? 'שלום רוני! אני מיצי. בואי נלמד ביחד לקרוא את השעון!'
       : pickOne(['מה נשחק עכשיו, רוני?', 'בואי נשחק!', 'איזה כיף שחזרת!']);
     m.say(hello, { mood: 'happy' });
     app.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => nav(b.dataset.go)));
     $('.parents-btn', app).addEventListener('click', () => nav('parentsGate'));
+    $('.continue', app)?.addEventListener('click', () => nav('game', { levelIndex: cont.levelIndex }));
   },
 
   levels() {
@@ -327,6 +335,8 @@ if (m) {
 } else {
   nav('splash');
 }
+
+navigator.storage?.persist?.().catch(() => {});
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
